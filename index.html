@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZPRINT WO Tool – Ultra Safe</title>
+<style>
+body{font-family:Arial;padding:20px;max-width:520px}
+label{display:block;margin-top:12px}
+select,input,button{width:100%;padding:8px;margin-top:4px}
+button{margin-top:16px}
+</style>
+</head>
+<body>
+
+<h2>ZPRINT – Work Order Generator</h2>
+
+<form id="woForm">
+  <label>Category</label>
+  <select id="category" required></select>
+
+  <label>Subcategory</label>
+  <select id="subcategory" required></select>
+
+  <label>Client Name</label>
+  <input id="client" required>
+
+  <label>Client Phone</label>
+  <input list="phoneList" id="phone" required>
+  <datalist id="phoneList"></datalist>
+
+  <label>Description</label>
+  <input id="description">
+
+  <label>Version</label>
+  <input id="version" value="v0">
+
+  <button type="submit">Generate</button>
+</form>
+
+<hr>
+
+<div id="result" hidden>
+  <p><b>Filename</b></p>
+  <input id="filename" readonly>
+  <button type="button" onclick="copyFilename()">COPY</button>
+  <p><a id="labelLink" target="_blank">Download Job Card Label</a></p>
+</div>
+
+<script>
+const CATEGORIES = {
+  PVC:{subs:{UVPC:"UV Print & Cut",UV:"UV",ECO:"Eco",PLN:"Plain"}},
+  EMB:{subs:{STD:"Standard",PRM:"Premium"}},
+  BAN:{subs:{UV:"UV",ECO:"Eco",STD:"Standard"}},
+  PUB:{subs:{FLY:"Flyer",BR:"Brochure",BC:"Business Card"}},
+  CUS:{subs:{CUS:"Custom Input"}}
+};
+
+const SCRIPT_URL = "PASTE_APPS_SCRIPT_URL_HERE";
+
+const category = document.getElementById("category");
+const subcategory = document.getElementById("subcategory");
+
+category.innerHTML = "<option value=''>Select Category</option>";
+subcategory.innerHTML = "<option value=''>Select Subcategory</option>";
+
+Object.keys(CATEGORIES).forEach(c => {
+  const o = document.createElement("option");
+  o.value = c;
+  o.textContent = c;
+  category.appendChild(o);
+});
+
+category.onchange = () => {
+  subcategory.innerHTML = "<option value=''>Select Subcategory</option>";
+  const subs = CATEGORIES[category.value]?.subs || {};
+  Object.keys(subs).forEach(s => {
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = s + " - " + subs[s];
+    subcategory.appendChild(o);
+  });
+};
+
+fetch(`${SCRIPT_URL}?action=getPhones`)
+.then(r=>r.json())
+.then(data=>{
+  const list=document.getElementById("phoneList");
+  data.forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p;
+    list.appendChild(o);
+  });
+});
+
+document.getElementById("woForm").onsubmit = async e => {
+  e.preventDefault();
+  const params = new URLSearchParams({
+    action:"createWO",
+    category:category.value,
+    subcategory:subcategory.value,
+    client:client.value,
+    phone:phone.value,
+    description:description.value,
+    version:version.value
+  });
+  const res = await fetch(`${SCRIPT_URL}?${params}`);
+  const data = await res.json();
+  filename.value=data.filename;
+  labelLink.href=data.labelUrl;
+  result.hidden=false;
+};
+
+function copyFilename(){
+  filename.select();
+  document.execCommand("copy");
+}
+</script>
+
+</body>
+</html>
